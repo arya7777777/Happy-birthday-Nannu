@@ -7,17 +7,20 @@
   <style>
     html,body{margin:0;height:100%;background:#081b3e;}
     #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
-    canvas{display:block;width:100vw;height:70vh;}            /* canvas upper area */
-    #clock-strip{height:30vh;display:flex;align-items:center; /* counter below canvas */
+    canvas{display:block;width:100vw;height:68vh;}            /* animation area */
+    #clock-strip{height:32vh;display:flex;align-items:center; /* counter area */
                  justify-content:center;color:#fff;
-                 font:600 18px system-ui,Arial}
+                 font:600 18px system-ui,Arial;text-align:center;padding:0 12px}
     #msg{position:absolute;top:10vh;left:6vw;width:80vw;max-width:560px;color:#fff;z-index:3}
     #code{display:none;line-height:1.35;font:14px system-ui,Arial}
+    #playBtn{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:20;
+             padding:8px 14px;border-radius:20px;border:none;background:#ff4d6d;color:#fff;
+             font:600 14px system-ui,Arial}
     #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;
          font:14px/1.4 system-ui,Arial;padding:8px;display:none;z-index:10}
     @media (max-width:420px){
       canvas{height:66vh}
-      #clock-strip{height:34vh;font-size:16px;text-align:center;padding:0 12px}
+      #clock-strip{height:34vh;font-size:16px}
       #msg{top:12vh;left:6vw;width:84vw;font-size:13px}
     }
   </style>
@@ -38,31 +41,38 @@
     </div></div>
 
     <canvas id="canvas"></canvas>
-    <div id="clock-strip">
-      <span id="clock">Loading…</span>
-    </div>
+    <div id="clock-strip"><span id="clock">Loading…</span></div>
   </div>
 
   <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
+  <button id="playBtn">Tap to start music</button>
 
   <script>
-    // Show first load error (helps catch missing files)
+    // Error display (helps catch missing files)
     (function(){ const b=document.getElementById('err');
       addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
     })();
 
-    // Responsive canvas height based on viewport
+    // Canvas sizing
     const cv=document.getElementById('canvas');
-    function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.70); }
+    function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.68); }
     size(); addEventListener('resize',size); addEventListener('orientationchange',size);
 
-    // Mobile audio: play on first touch/click
-    (function(){ const a=document.getElementById('myAudio');
-      const kick=()=>{ a.play().catch(()=>{}); removeEventListener('click',kick); removeEventListener('touchstart',kick); };
-      addEventListener('click',kick,{passive:true}); addEventListener('touchstart',kick,{passive:true});
+    // Music unlock with a visible button and canvas tap
+    (function(){
+      const a=document.getElementById('myAudio');
+      const btn=document.getElementById('playBtn');
+      function start(){
+        a.loop=true;
+        a.play().then(()=>{ btn.style.display='none'; }).catch(()=>{ /* keep button */ });
+      }
+      btn.addEventListener('click',start,{passive:true});
+      btn.addEventListener('touchstart',start,{passive:true});
+      cv.addEventListener('click',start,{passive:true});
+      cv.addEventListener('touchstart',start,{passive:true});
     })();
 
-    // Load required libs in strict order
+    // Load libraries in order (paths must match file/ exactly)
     const libs=[
       'file/jquery.min.js',
       'file/jscex.min.js',
@@ -80,11 +90,11 @@
       try{ for(const l of libs){ await loadScript(l); } }
       catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // Countdown shown below the canvas — set month/day here
+      // Countdown below the canvas — set birthday month/day here
       (function clockCounter(){
         const span=document.getElementById('clock');
         function nextBirthday(m,d){ const n=new Date(); let y=n.getFullYear(); let t=new Date(y,m-1,d,0,0,0); if(t<n) t=new Date(y+1,m-1,d,0,0,0); return t; }
-        const target=nextBirthday(9,30); // change this to birthday month/day
+        const target=nextBirthday(9,30); // change to birthday (month, day)
         function tick(){
           const n=new Date(); let diff=Math.max(0,target-n);
           const D=Math.floor(diff/86400000); diff%=86400000;
@@ -96,13 +106,14 @@
         } tick();
       })();
 
-      // Heart/tree animation tuned for mobile
+      // Heart / tree animation tuned for mobile
       const $=window.jQuery; const $canvas=$(cv);
       const width=$canvas.width(); const height=$canvas.height();
       const isMobile = width < 700;
 
       const opts={
-        seed:{ x: Math.floor(width/2) - (isMobile ? 10 : 20), color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
+        seed:{ x: Math.floor(width/2) - (isMobile ? 10 : 20),
+               color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
         branch:[[535,680,570,250,500,200,30,100,[
           [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
           [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
@@ -119,35 +130,28 @@
 
       const tree=new Tree($canvas[0], width, height, opts);
       const seed=tree.seed, foot=tree.footer;
-      let hold = 1; // wait for tap so heart is visible and tappable
+      let hold = 1; // wait for user tap so heart is visible
 
-      // Show a faint outline at seed to help user notice the heart
+      // show subtle hint circle around seed on phones
       try{
         const ctx=cv.getContext('2d'); ctx.strokeStyle='rgba(255,255,255,0.25)';
         ctx.beginPath(); ctx.arc(opts.seed.x+20, height-40, 18, 0, Math.PI*2); ctx.stroke();
       }catch(_){}
 
-      // Tap/click to start heart drop
       $canvas.on('click touchstart', function(){ hold = 0; });
 
       const seedAnimate=eval(Jscex.compile('async', function(){
         seed.draw();
-        while(hold){ $await(Jscex.Async.sleep(10)); }           // wait for user tap
+        while(hold){ $await(Jscex.Async.sleep(10)); }
         while(seed.canScale()){ seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
         while(seed.canMove()){  seed.move(0,2); foot.draw(); $await(Jscex.Async.sleep(10)); }
       }));
       const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
       const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
 
-      const snapW = Math.min(610, Math.max(260, width - 240));
-      const moveX = Math.min(500, Math.max(260, width - 500));
+      // No snapshot-to-background (avoids double/seam on mobile)
       const moveAnimate=eval(Jscex.compile('async', function(){
-        tree.snapshot('p1', 240, 0, snapW, height);
-        while(tree.move('p1', moveX, 0)){ foot.draw(); $await(Jscex.Async.sleep(10)); }
-        foot.draw();
-        tree.snapshot('p2', moveX, 0, snapW, height);
-        $canvas.parent().css('background','url('+tree.toDataURL('image/png')+')');
-        $canvas.css('background','#ffe'); $await(Jscex.Async.sleep(300)); $canvas.css('background','none');
+        foot.draw(); // simple finalize
       }));
 
       const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
