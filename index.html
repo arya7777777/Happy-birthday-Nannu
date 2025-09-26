@@ -6,20 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="stylesheet" href="file/default.css">
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background:#081b3e; }
-    #wrap { height: 100vh; width: 100vw; position: relative; }
+    html, body { margin:0; height:100%; overflow:hidden; background:#081b3e; }
+    #wrap { position:relative; width:100vw; height:100vh; }
     canvas { display:block; width:100vw; height:100vh; }
-    #text { position:absolute; top:12vh; left:6vw; width:60vw; max-width:520px; color:#fff; z-index:3; }
-    #code { display:none; line-height:1.3; font-family: "Trebuchet MS", Arial, sans-serif; font-size:14px; }
-    #clock-box { position:absolute; top:3vh; left:6vw; color:#fff; z-index:3;
-                 font-family:"Trebuchet MS", Arial, sans-serif; font-size:18px; }
-    #clock { font-weight:600; letter-spacing:0.5px; }
-    /* Small phones */
+    #clock-box { position:absolute; top:2.5vh; left:5vw; color:#fff; z-index:3;
+                 font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; font-size:18px; }
+    #clock { font-weight:600; }
+    #text { position:absolute; top:14vh; left:5vw; width:72vw; max-width:560px; color:#fff; z-index:3; }
+    #code { display:none; line-height:1.35; font-size:14px; font-family:system-ui, Arial; }
     @media (max-width:420px){
-      #text { top:16vh; left:5vw; width:72vw; font-size:13px; }
-      #clock-box { top:2vh; left:5vw; font-size:16px; }
+      #clock-box{font-size:16px; top:1.8vh; left:4.5vw;}
+      #text{top:16vh; left:4.5vw; width:78vw; font-size:13px;}
     }
   </style>
+
+  <!-- Libraries (paths must match exact filenames in file/) -->
   <script src="file/jquery.min.js"></script>
   <script src="file/jscex.min.js"></script>
   <script src="file/jscex-parser.js"></script>
@@ -27,24 +28,23 @@
   <script src="file/jscex-builderbase.min.js"></script>
   <script src="file/jscex-async.min.js"></script>
   <script src="file/jscex-async-powerpack.min.js"></script>
-  <script src="file/functions.js" charset="utf-8"></script>
-  <script src="file/love.js" charset="utf-8"></script>
+  <script src="file/functions.js"></script>
+  <script src="file/love.js"></script>
 </head>
 <body>
+  <!-- Audio (plays on first tap) -->
   <audio id="myAudio">
     <source src="aud.mp3" type="audio/mpeg">
   </audio>
 
   <div id="wrap">
-    <div id="clock-box">
-      <span id="clock">Loading…</span>
-    </div>
+    <div id="clock-box"><span id="clock">Loading…</span></div>
 
     <div id="text">
       <div id="code">
         <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
         <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
-        <span class="say">Aaap Hamesha Khush Raho, hamesha happy happy raho. I miss you.</span><br>
+        <span class="say">Aap hamesha khush raho, hamesha happy happy raho. I miss you.</span><br>
         <span class="say">May Allah bless you and give you many happiness. 💕</span><br>
         <span class="say">Mera pyara bacha — my world, my universe, my everything.</span><br>
         <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
@@ -56,39 +56,60 @@
   </div>
 
   <script>
-    // 1) Responsive canvas sizing
-    var $canvas = $('#canvas');
+    // 1) Responsive canvas
+    const $canvas = $('#canvas');
     function sizeCanvas(){
-      var w = window.innerWidth, h = window.innerHeight;
-      $canvas.attr('width', w);
-      $canvas.attr('height', h);
+      $canvas.attr('width', window.innerWidth);
+      $canvas.attr('height', window.innerHeight);
     }
     sizeCanvas();
-    window.addEventListener('resize', sizeCanvas);
-    window.addEventListener('orientationchange', sizeCanvas);
+    addEventListener('resize', sizeCanvas);
+    addEventListener('orientationchange', sizeCanvas);
 
-    // 2) Play audio on first tap/click (mobile friendly)
-    function enableAudioOnce() {
-      var audio = document.getElementById('myAudio');
-      var playOnce = function(){
-        audio.play().catch(function(){/* ignore */});
-        document.removeEventListener('click', playOnce);
-        document.removeEventListener('touchstart', playOnce);
-      };
-      document.addEventListener('click', playOnce, {passive:true});
-      document.addEventListener('touchstart', playOnce, {passive:true});
-    }
-    enableAudioOnce();
+    // 2) Mobile audio: play on first touch/click
+    (function enableAudioOnce(){
+      const audio = document.getElementById('myAudio');
+      const start = () => { audio.play().catch(()=>{}); removeEventListener('click', start); removeEventListener('touchstart', start); };
+      addEventListener('click', start, {passive:true});
+      addEventListener('touchstart', start, {passive:true});
+    })();
 
-    // 3) Heart tree animation (uses existing Tree/functions.js/love.js)
+    // 3) Countdown to next birthday (set month/day below)
+    (function clockCounter(){
+      const span = document.getElementById('clock');
+      function nextBirthday(month, day){
+        const now = new Date();
+        let y = now.getFullYear();
+        let t = new Date(y, month-1, day, 0, 0, 0);
+        if (t < now) t = new Date(y+1, month-1, day, 0, 0, 0);
+        return t;
+      }
+      const target = nextBirthday(9, 30); // CHANGE here: month, day
+      function tick(){
+        const now = new Date();
+        let diff = Math.max(0, target - now);
+        const d = Math.floor(diff / 86400000);
+        diff %= 86400000;
+        const h = Math.floor(diff / 3600000);
+        diff %= 3600000;
+        const m = Math.floor(diff / 60000);
+        diff %= 60000;
+        const s = Math.floor(diff / 1000);
+        span.textContent = d + " days " + h + " hours " + m + " minutes " + s + " seconds";
+        setTimeout(tick, 500);
+      }
+      tick();
+    })();
+
+    // 4) Heart tree animation (uses Tree from functions.js/love.js)
     (function () {
       if (!$canvas[0].getContext) return;
 
-      var width = $canvas.width();
-      var height = $canvas.height();
+      const width = $canvas.width();
+      const height = $canvas.height();
 
-      var opts = {
-        seed: { x: width / 2 - 20, color: "rgb(190,26,37)", scale: 2 },
+      const opts = {
+        seed: { x: width/2 - 20, color: "rgb(190,26,37)", scale: 2 },
         branch: [
           [535, 680, 570, 250, 500, 200, 30, 100, [
             [540, 500, 455, 417, 340, 400, 13, 100, [
@@ -111,47 +132,46 @@
         footer: { width: width, height: 5, speed: 10 }
       };
 
-      var tree = new Tree($canvas[0], width, height, opts);
-      var seed = tree.seed, foot = tree.footer, hold = 1;
+      const tree = new Tree($canvas[0], width, height, opts);
+      const seed = tree.seed, foot = tree.footer;
+      let hold = 0; // start automatically
 
-      // Allow tap to start and also to play audio
-      $canvas.on('click touchstart', function(e){
-        hold = 0;
-      });
+      // Optional: let user tap to replay audio; animation no longer blocked
+      $canvas.on('click touchstart', function(){ /* keep */ });
 
-      var seedAnimate = eval(Jscex.compile("async", function () {
+      const seedAnimate = eval(Jscex.compile("async", function () {
         seed.draw();
         while (hold) { $await(Jscex.Async.sleep(10)); }
         while (seed.canScale()) { seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
         while (seed.canMove()) { seed.move(0, 2); foot.draw(); $await(Jscex.Async.sleep(10)); }
       }));
 
-      var growAnimate = eval(Jscex.compile("async", function () {
+      const growAnimate = eval(Jscex.compile("async", function () {
         do { tree.grow(); $await(Jscex.Async.sleep(10)); } while (tree.canGrow());
       }));
 
-      var flowAnimate = eval(Jscex.compile("async", function () {
+      const flowAnimate = eval(Jscex.compile("async", function () {
         do { tree.flower(2); $await(Jscex.Async.sleep(10)); } while (tree.canFlower());
       }));
 
-      var moveAnimate = eval(Jscex.compile("async", function () {
-        tree.snapshot("p1", 240, 0, Math.min(610,width-240), height);
+      const moveAnimate = eval(Jscex.compile("async", function () {
+        tree.snapshot("p1", 240, 0, Math.min(610, width-240), height);
         while (tree.move("p1", Math.min(500, width-500), 0)) {
-          foot.draw(); $await(Jscex.Async.sleep(10));
+            foot.draw(); $await(Jscex.Async.sleep(10));
         }
         foot.draw();
-        tree.snapshot("p2", Math.min(500,width-500), 0, Math.min(610,width-240), height);
+        tree.snapshot("p2", Math.min(500, width-500), 0, Math.min(610, width-240), height);
         $canvas.parent().css("background", "url(" + tree.toDataURL('image/png') + ")");
         $canvas.css("background", "#ffe");
         $await(Jscex.Async.sleep(300));
         $canvas.css("background", "none");
       }));
 
-      var textAnimate = eval(Jscex.compile("async", function () {
+      const textAnimate = eval(Jscex.compile("async", function () {
         $("#code").show().typewriter();
       }));
 
-      var runAsync = eval(Jscex.compile("async", function () {
+      const runAsync = eval(Jscex.compile("async", function () {
         $await(seedAnimate());
         $await(growAnimate());
         $await(flowAnimate());
@@ -160,47 +180,6 @@
       }));
 
       runAsync().start();
-
-      // Resize handler to keep full screen without white gaps
-      function reflow(){
-        sizeCanvas();
-        var w = $canvas.width(), h = $canvas.height();
-        tree.resize(w, h);            // requires functions.js/love.js to implement resize; fallback below if not present
-        $('#wrap').css({width: w+'px', height: h+'px'});
-      }
-      window.addEventListener('resize', reflow);
-      window.addEventListener('orientationchange', reflow);
-    })();
-
-    // 4) Running time / countdown display
-    // Show how long since a special date, or until an upcoming birthday.
-    // Set targetDate to the birthday date (year auto-updates next time if passed).
-    (function clockCounter(){
-      const span = document.getElementById('clock');
-
-      function nextBirthday(month, day){
-        const now = new Date();
-        let y = now.getFullYear();
-        let target = new Date(y, month-1, day, 0, 0, 0);
-        if (target < now) target = new Date(y+1, month-1, day, 0, 0, 0);
-        return target;
-      }
-
-      // CHANGE THIS: birthday month/day
-      const target = nextBirthday(9, 30); // example: Sept 30
-
-      function tick(){
-        const now = new Date();
-        let diff = target - now;
-        if (diff < 0) diff = 0;
-        const d = Math.floor(diff / (24*3600*1000));
-        const h = Math.floor((diff % (24*3600*1000)) / (3600*1000));
-        const m = Math.floor((diff % (3600*1000)) / (60*1000));
-        const s = Math.floor((diff % (60*1000)) / 1000);
-        span.textContent = d + " days " + h + " hours " + m + " minutes " + s + " seconds";
-        requestAnimationFrame(function(){ setTimeout(tick, 500); });
-      }
-      tick();
     })();
   </script>
 </body>
