@@ -7,7 +7,6 @@
   <style>
     html,body{margin:0;height:100%;background:#081b3e;}
     #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
-    /* Top = animation area (scaled+centered), Bottom = info area */
     canvas{display:block;width:100vw;height:68vh;}
     #info{height:32vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:10px;}
     #ageBox{display:inline-flex;gap:10px;align-items:center;font:600 16px system-ui,Arial;background:rgba(255,255,255,0.08);padding:8px 14px;border-radius:999px}
@@ -80,8 +79,8 @@
       try{ for(const l of libs){ await loadScript(l); } }
       catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // AGE SO FAR — set DOB (YYYY, MM, DD)
-      const DOB = new Date(2005, 8, 30); // change to actual DOB
+      // AGE SO FAR — set DOB (YYYY, MM, DD) — month 0-based
+      const DOB = new Date(2005, 8, 30); // change to real DOB
       const yEl=document.getElementById('yNum'), dEl=document.getElementById('dNum'),
             hEl=document.getElementById('hNum'), mEl=document.getElementById('mNum'), sEl=document.getElementById('sNum');
       function updateAge(){
@@ -105,7 +104,7 @@
       }
       updateAge();
 
-      // Build centered, scaled scene (strong centering)
+      // Build centered, scaled scene (mobile friendly)
       const $=window.jQuery; const $canvas=$(cv);
       const width=$canvas.width(); const height=$canvas.height();
 
@@ -116,7 +115,6 @@
       const offsetY = (height - baseH*fit)/2 + height*0.06; // nudge down
       ctx.setTransform(fit, 0, 0, fit, offsetX, offsetY);
 
-      // Seed centered on base coords
       const seedX = baseW/2 - 20;
       const isMobile = width < 700;
 
@@ -143,11 +141,11 @@
       const audio=document.getElementById('myAudio');
       const hint=document.getElementById('hint');
 
-      // Start both animation and audio on first user gesture (listen widely)
+      // Start both animation and audio on first gesture (attach to canvas+document)
       function startAll(){
         if (hold){ hold = 0; }
         audio.loop = true;
-        audio.play().catch(()=>{}); // if blocked, a second tap will succeed
+        const p = audio.play(); if (p && p.catch) p.catch(()=>{});
         hint.style.display='none';
         $canvas.off('click touchstart', startAll);
         document.removeEventListener('click', startAll);
@@ -168,7 +166,17 @@
       }));
       const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
       const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
-      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // disable snapshot to avoid seam
+
+      // Smooth slide without seam; requires Tree.moveBy(dx,dy). If absent, add in functions.js: Tree.prototype.moveBy=function(dx,dy){ this.ctx.translate(dx,dy); return true; };
+      const slideDistance = Math.min(140, Math.max(80, width * 0.18));
+      const moveAnimate=eval(Jscex.compile('async', function(){
+        let moved = 0;
+        while (moved < slideDistance){
+          tree.moveBy(2, 0); foot.draw(); moved += 2;
+          $await(Jscex.Async.sleep(10));
+        }
+      }));
+
       const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
 
       const runAsync=eval(Jscex.compile('async', function(){
