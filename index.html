@@ -1,183 +1,207 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Happy Birthday Nannu</title>	    
-    <link type="text/css" rel="stylesheet" href="./file/default.css">
-    <script type="text/javascript" src="./file/jquery.min.js"></script>
-    <script type="text/javascript" src="./file/jscex.min.js"></script>
-    <script type="text/javascript" src="./file/jscex-parser.js"></script>
-    <script type="text/javascript" src="./file/jscex-jit.js"></script>
-    <script type="text/javascript" src="./file/jscex-builderbase.min.js"></script>
-    <script type="text/javascript" src="./file/jscex-async.min.js"></script>
-    <script type="text/javascript" src="./file/jscex-async-powerpack.min.js"></script>
-    <script type="text/javascript" src="./file/functions.js" charset="utf-8"></script>
-    <script type="text/javascript" src="./file/love.js" charset="utf-8"></script>
-    <script>
-        function playAudio() {
-            var audio = document.getElementById("myAudio");
-            audio.play();
-        }
-    </script>
+  <meta charset="UTF-8">
+  <title>Happy Birthday Nannu</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="stylesheet" href="file/default.css">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background:#081b3e; }
+    #wrap { height: 100vh; width: 100vw; position: relative; }
+    canvas { display:block; width:100vw; height:100vh; }
+    #text { position:absolute; top:12vh; left:6vw; width:60vw; max-width:520px; color:#fff; z-index:3; }
+    #code { display:none; line-height:1.3; font-family: "Trebuchet MS", Arial, sans-serif; font-size:14px; }
+    #clock-box { position:absolute; top:3vh; left:6vw; color:#fff; z-index:3;
+                 font-family:"Trebuchet MS", Arial, sans-serif; font-size:18px; }
+    #clock { font-weight:600; letter-spacing:0.5px; }
+    /* Small phones */
+    @media (max-width:420px){
+      #text { top:16vh; left:5vw; width:72vw; font-size:13px; }
+      #clock-box { top:2vh; left:5vw; font-size:16px; }
+    }
+  </style>
+  <script src="file/jquery.min.js"></script>
+  <script src="file/jscex.min.js"></script>
+  <script src="file/jscex-parser.js"></script>
+  <script src="file/jscex-jit.js"></script>
+  <script src="file/jscex-builderbase.min.js"></script>
+  <script src="file/jscex-async.min.js"></script>
+  <script src="file/jscex-async-powerpack.min.js"></script>
+  <script src="file/functions.js" charset="utf-8"></script>
+  <script src="file/love.js" charset="utf-8"></script>
 </head>
 <body>
-    <div id="main">
-        <div id="error"><a href="http://www.google.cn/chrome/intl/zh-CN/landing_chrome.html?hl=zh-CN&brand=CHMI">Chrome</a> (<a href="http://firefox.com.cn/download/">Firefox</a>)</div>
-        <audio autoplay="autoplay" height="100" width="100" id="myAudio">
-            <source src="aud.mp3" type="audio/mp3" />
-            <embed height="100" width="100" src="aud.mp3" />
-        </audio>
-        <div id="wrap">
-            <div id="text">
-                <div id="code">
-                    <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
-                    <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
-                    <span class="say">Aaap Hamesha Khush  Raho Hamesha Happy Happy Raho I miss you</span><br>
-                    <span class="say">May Allah Bless You And give u many happiness 💕</span><br>
-                    <span class="say">Mera Pyaraaaaaaaa Bchaa My world My Universe My Everything</span><br>
-                    <span class="say">Apna Khayaal Rkha Karo Nannuuu 🥺</span><br>
-                    <span class="say">Hope u have a great day today  🥺 I wish * was there to celebrate with you, Happy Birthday Once Again Nannu</span><br>
-                </div>
-            </div>
-            <div id="clock-box">
-                <span id="clock">577 days 0 hours 0 minutes 0 seconds</span> <!-- Change to "6940 days..." if needed -->
-            </div>
-            <canvas id="canvas" width="1100" height="680"></canvas>
-        </div>
+  <audio id="myAudio">
+    <source src="aud.mp3" type="audio/mpeg">
+  </audio>
+
+  <div id="wrap">
+    <div id="clock-box">
+      <span id="clock">Loading…</span>
     </div>
 
-    <script>
-    (function() {
-        var canvas = $('#canvas');
-		
-        if (!canvas[0].getContext) {
-            $("#error").show();
-            return false;
+    <div id="text">
+      <div id="code">
+        <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
+        <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
+        <span class="say">Aaap Hamesha Khush Raho, hamesha happy happy raho. I miss you.</span><br>
+        <span class="say">May Allah bless you and give you many happiness. 💕</span><br>
+        <span class="say">Mera pyara bacha — my world, my universe, my everything.</span><br>
+        <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
+        <span class="say">Hope you have a great day today — Happy Birthday once again, Nannu!</span><br>
+      </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    // 1) Responsive canvas sizing
+    var $canvas = $('#canvas');
+    function sizeCanvas(){
+      var w = window.innerWidth, h = window.innerHeight;
+      $canvas.attr('width', w);
+      $canvas.attr('height', h);
+    }
+    sizeCanvas();
+    window.addEventListener('resize', sizeCanvas);
+    window.addEventListener('orientationchange', sizeCanvas);
+
+    // 2) Play audio on first tap/click (mobile friendly)
+    function enableAudioOnce() {
+      var audio = document.getElementById('myAudio');
+      var playOnce = function(){
+        audio.play().catch(function(){/* ignore */});
+        document.removeEventListener('click', playOnce);
+        document.removeEventListener('touchstart', playOnce);
+      };
+      document.addEventListener('click', playOnce, {passive:true});
+      document.addEventListener('touchstart', playOnce, {passive:true});
+    }
+    enableAudioOnce();
+
+    // 3) Heart tree animation (uses existing Tree/functions.js/love.js)
+    (function () {
+      if (!$canvas[0].getContext) return;
+
+      var width = $canvas.width();
+      var height = $canvas.height();
+
+      var opts = {
+        seed: { x: width / 2 - 20, color: "rgb(190,26,37)", scale: 2 },
+        branch: [
+          [535, 680, 570, 250, 500, 200, 30, 100, [
+            [540, 500, 455, 417, 340, 400, 13, 100, [
+              [450, 435, 434, 430, 394, 395, 2, 40]
+            ]],
+            [550, 445, 600, 356, 680, 345, 12, 100, [
+              [578, 400, 648, 409, 661, 426, 3, 80]
+            ]],
+            [539, 281, 537, 248, 534, 217, 3, 40],
+            [546, 397, 413, 247, 328, 244, 9, 80, [
+              [427, 286, 383, 253, 371, 205, 2, 40],
+              [498, 345, 435, 315, 395, 330, 4, 60]
+            ]],
+            [546, 357, 608, 252, 678, 221, 6, 100, [
+              [590, 293, 646, 277, 648, 271, 2, 80]
+            ]]
+          ]]
+        ],
+        bloom: { num: 700, width: width, height: height - 30 },
+        footer: { width: width, height: 5, speed: 10 }
+      };
+
+      var tree = new Tree($canvas[0], width, height, opts);
+      var seed = tree.seed, foot = tree.footer, hold = 1;
+
+      // Allow tap to start and also to play audio
+      $canvas.on('click touchstart', function(e){
+        hold = 0;
+      });
+
+      var seedAnimate = eval(Jscex.compile("async", function () {
+        seed.draw();
+        while (hold) { $await(Jscex.Async.sleep(10)); }
+        while (seed.canScale()) { seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
+        while (seed.canMove()) { seed.move(0, 2); foot.draw(); $await(Jscex.Async.sleep(10)); }
+      }));
+
+      var growAnimate = eval(Jscex.compile("async", function () {
+        do { tree.grow(); $await(Jscex.Async.sleep(10)); } while (tree.canGrow());
+      }));
+
+      var flowAnimate = eval(Jscex.compile("async", function () {
+        do { tree.flower(2); $await(Jscex.Async.sleep(10)); } while (tree.canFlower());
+      }));
+
+      var moveAnimate = eval(Jscex.compile("async", function () {
+        tree.snapshot("p1", 240, 0, Math.min(610,width-240), height);
+        while (tree.move("p1", Math.min(500, width-500), 0)) {
+          foot.draw(); $await(Jscex.Async.sleep(10));
         }
+        foot.draw();
+        tree.snapshot("p2", Math.min(500,width-500), 0, Math.min(610,width-240), height);
+        $canvas.parent().css("background", "url(" + tree.toDataURL('image/png') + ")");
+        $canvas.css("background", "#ffe");
+        $await(Jscex.Async.sleep(300));
+        $canvas.css("background", "none");
+      }));
 
-        var width = canvas.width();
-        var height = canvas.height();        
-        canvas.attr("width", width);
-        canvas.attr("height", height);
+      var textAnimate = eval(Jscex.compile("async", function () {
+        $("#code").show().typewriter();
+      }));
 
-        var opts = {
-            seed: {
-                x: width / 2 - 20,
-                color: "rgb(190, 26, 37)",
-                scale: 2
-            },
-            branch: [
-                [535, 680, 570, 250, 500, 200, 30, 100, [
-                    [540, 500, 455, 417, 340, 400, 13, 100, [
-                        [450, 435, 434, 430, 394, 395, 2, 40]
-                    ]],
-                    [550, 445, 600, 356, 680, 345, 12, 100, [
-                        [578, 400, 648, 409, 661, 426, 3, 80]
-                    ]],
-                    [539, 281, 537, 248, 534, 217, 3, 40],
-                    [546, 397, 413, 247, 328, 244, 9, 80, [
-                        [427, 286, 383, 253, 371, 205, 2, 40],
-                        [498, 345, 435, 315, 395, 330, 4, 60]
-                    ]],
-                    [546, 357, 608, 252, 678, 221, 6, 100, [
-                        [590, 293, 646, 277, 648, 271, 2, 80]
-                    ]]
-                ]] 
-            ],
-            bloom: {
-                num: 700,
-                width: 1080,
-                height: 650,
-            },
-            footer: {
-                width: 1200,
-                height: 5,
-                speed: 10,
-            }
-        }
+      var runAsync = eval(Jscex.compile("async", function () {
+        $await(seedAnimate());
+        $await(growAnimate());
+        $await(flowAnimate());
+        $await(moveAnimate());
+        textAnimate().start();
+      }));
 
-        var tree = new Tree(canvas[0], width, height, opts);
-        var seed = tree.seed;
-        var foot = tree.footer;
-        var hold = 1;
+      runAsync().start();
 
-        canvas.click(function(e) {
-            playAudio();
-            var offset = canvas.offset(), x, y;
-            x = e.pageX - offset.left;
-            y = e.pageY - offset.top;
-            if (seed.hover(x, y)) {
-                hold = 0; 
-                canvas.unbind("click");
-                canvas.unbind("mousemove");
-                canvas.removeClass('hand');
-            }
-        }).mousemove(function(e) {
-            var offset = canvas.offset(), x, y;
-            x = e.pageX - offset.left;
-            y = e.pageY - offset.top;
-            canvas.toggleClass('hand', seed.hover(x, y));
-        });
-
-        var seedAnimate = eval(Jscex.compile("async", function () {
-            seed.draw();
-            while (hold) {
-                $await(Jscex.Async.sleep(10));
-            }
-            while (seed.canScale()) {
-                seed.scale(0.95);
-                $await(Jscex.Async.sleep(10));
-            }
-            while (seed.canMove()) {
-                seed.move(0, 2);
-                foot.draw();
-                $await(Jscex.Async.sleep(10));
-            }
-        }));
-
-        var growAnimate = eval(Jscex.compile("async", function () {
-            do {
-                tree.grow();
-                $await(Jscex.Async.sleep(10));
-            } while (tree.canGrow());
-        }));
-
-        var flowAnimate = eval(Jscex.compile("async", function () {
-            do {
-                tree.flower(2);
-                $await(Jscex.Async.sleep(10));
-            } while (tree.canFlower());
-        }));
-
-        var moveAnimate = eval(Jscex.compile("async", function () {
-            tree.snapshot("p1", 240, 0, 610, 680);
-            while (tree.move("p1", 500, 0)) {
-                foot.draw();
-                $await(Jscex.Async.sleep(10));
-            }
-            foot.draw();
-            tree.snapshot("p2", 500, 0, 610, 680);
-
-            canvas.parent().css("background", "url(" + tree.toDataURL('image/png') + ")");
-            canvas.css("background", "#ffe");
-            $await(Jscex.Async.sleep(300));
-            canvas.css("background", "none");
-        }));
-
-        var textAnimate = eval(Jscex.compile("async", function () {
-            $("#code").show().typewriter();
-        }));
-	    
-        var runAsync = eval(Jscex.compile("async", function () {
-            $await(seedAnimate());
-            $await(growAnimate());
-            $await(flowAnimate());
-            $await(moveAnimate());
-            textAnimate().start();
-        }));
-
-        runAsync().start();
+      // Resize handler to keep full screen without white gaps
+      function reflow(){
+        sizeCanvas();
+        var w = $canvas.width(), h = $canvas.height();
+        tree.resize(w, h);            // requires functions.js/love.js to implement resize; fallback below if not present
+        $('#wrap').css({width: w+'px', height: h+'px'});
+      }
+      window.addEventListener('resize', reflow);
+      window.addEventListener('orientationchange', reflow);
     })();
-    </script>
+
+    // 4) Running time / countdown display
+    // Show how long since a special date, or until an upcoming birthday.
+    // Set targetDate to the birthday date (year auto-updates next time if passed).
+    (function clockCounter(){
+      const span = document.getElementById('clock');
+
+      function nextBirthday(month, day){
+        const now = new Date();
+        let y = now.getFullYear();
+        let target = new Date(y, month-1, day, 0, 0, 0);
+        if (target < now) target = new Date(y+1, month-1, day, 0, 0, 0);
+        return target;
+      }
+
+      // CHANGE THIS: birthday month/day
+      const target = nextBirthday(9, 30); // example: Sept 30
+
+      function tick(){
+        const now = new Date();
+        let diff = target - now;
+        if (diff < 0) diff = 0;
+        const d = Math.floor(diff / (24*3600*1000));
+        const h = Math.floor((diff % (24*3600*1000)) / (3600*1000));
+        const m = Math.floor((diff % (3600*1000)) / (60*1000));
+        const s = Math.floor((diff % (60*1000)) / 1000);
+        span.textContent = d + " days " + h + " hours " + m + " minutes " + s + " seconds";
+        requestAnimationFrame(function(){ setTimeout(tick, 500); });
+      }
+      tick();
+    })();
+  </script>
 </body>
 </html>
