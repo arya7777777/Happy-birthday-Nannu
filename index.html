@@ -5,26 +5,29 @@
   <title>Happy Birthday Nannu</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <style>
-    html,body{margin:0;height:100%;overflow:hidden;background:#081b3e;}
-    #wrap{position:relative;width:100vw;height:100vh;}
-    canvas{display:block;width:100vw;height:100vh;}
-    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;
-         font:14px/1.4 system-ui,Arial;padding:10px;display:none;z-index:9}
-    #clock-box{position:absolute;top:2.2vh;left:5vw;color:#fff;z-index:3;
-               font:600 18px system-ui,Arial}
-    #text{position:absolute;top:15vh;left:5vw;width:78vw;max-width:560px;color:#fff;z-index:3}
+    html,body{margin:0;height:100%;background:#081b3e;}
+    #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
+    canvas{display:block;width:100vw;height:70vh;}            /* canvas upper area */
+    #clock-strip{height:30vh;display:flex;align-items:center; /* counter below canvas */
+                 justify-content:center;color:#fff;
+                 font:600 18px system-ui,Arial}
+    #msg{position:absolute;top:10vh;left:6vw;width:80vw;max-width:560px;color:#fff;z-index:3}
     #code{display:none;line-height:1.35;font:14px system-ui,Arial}
-    @media (max-width:420px){#clock-box{font-size:16px} #text{top:17vh;font-size:13px}}
+    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;
+         font:14px/1.4 system-ui,Arial;padding:8px;display:none;z-index:10}
+    @media (max-width:420px){
+      canvas{height:66vh}
+      #clock-strip{height:34vh;font-size:16px;text-align:center;padding:0 12px}
+      #msg{top:12vh;left:6vw;width:84vw;font-size:13px}
+    }
   </style>
   <link rel="stylesheet" href="file/default.css">
 </head>
 <body>
   <div id="err"></div>
-  <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
 
-  <div id="wrap">
-    <div id="clock-box"><span id="clock">Loading…</span></div>
-    <div id="text"><div id="code">
+  <div id="stage">
+    <div id="msg"><div id="code">
       <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
       <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
       <span class="say">Aap hamesha khush raho. I miss you.</span><br>
@@ -33,33 +36,33 @@
       <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
       <span class="say">Happy Birthday once again!</span><br>
     </div></div>
+
     <canvas id="canvas"></canvas>
+    <div id="clock-strip">
+      <span id="clock">Loading…</span>
+    </div>
   </div>
 
+  <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
+
   <script>
-    // Show first error to debug missing files
-    (function(){
-      const box=document.getElementById('err');
-      window.addEventListener('error',e=>{
-        box.style.display='block';
-        box.textContent = e && e.message ? e.message : 'A script failed to load';
-      });
+    // Show first load error (helps catch missing files)
+    (function(){ const b=document.getElementById('err');
+      addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
     })();
 
-    // Ensure canvas matches screen
+    // Responsive canvas height based on viewport
     const cv=document.getElementById('canvas');
-    function size(){ cv.width=innerWidth; cv.height=innerHeight; }
+    function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.70); }
     size(); addEventListener('resize',size); addEventListener('orientationchange',size);
 
-    // Play audio on first user interaction (mobile policy)
-    (function(){
-      const a=document.getElementById('myAudio');
+    // Mobile audio: play on first touch/click
+    (function(){ const a=document.getElementById('myAudio');
       const kick=()=>{ a.play().catch(()=>{}); removeEventListener('click',kick); removeEventListener('touchstart',kick); };
-      addEventListener('click',kick,{passive:true});
-      addEventListener('touchstart',kick,{passive:true});
+      addEventListener('click',kick,{passive:true}); addEventListener('touchstart',kick,{passive:true});
     })();
 
-    // Load required libraries in order; paths must match file/ folder exactly.
+    // Load required libs in strict order
     const libs=[
       'file/jquery.min.js',
       'file/jscex.min.js',
@@ -75,28 +78,31 @@
 
     (async function main(){
       try{ for(const l of libs){ await loadScript(l); } }
-      catch(err){ const box=document.getElementById('err'); box.style.display='block'; box.textContent=err.message; return; }
+      catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // Countdown to next birthday (set month/day)
+      // Countdown shown below the canvas — set month/day here
       (function clockCounter(){
         const span=document.getElementById('clock');
         function nextBirthday(m,d){ const n=new Date(); let y=n.getFullYear(); let t=new Date(y,m-1,d,0,0,0); if(t<n) t=new Date(y+1,m-1,d,0,0,0); return t; }
-        const target=nextBirthday(9,30); // change here
+        const target=nextBirthday(9,30); // change this to birthday month/day
         function tick(){
           const n=new Date(); let diff=Math.max(0,target-n);
-          const d=Math.floor(diff/86400000); diff%=86400000;
-          const h=Math.floor(diff/3600000); diff%=3600000;
-          const m=Math.floor(diff/60000); diff%=60000;
-          const s=Math.floor(diff/1000);
-          span.textContent=`${d} days ${h} hours ${m} minutes ${s} seconds`;
+          const D=Math.floor(diff/86400000); diff%=86400000;
+          const H=Math.floor(diff/3600000); diff%=3600000;
+          const M=Math.floor(diff/60000); diff%=60000;
+          const S=Math.floor(diff/1000);
+          span.textContent=`${D} days  ${H} hours  ${M} minutes  ${S} seconds`;
           setTimeout(tick,500);
         } tick();
       })();
 
-      // Run tree animation
-      const $=window.jQuery; const $canvas=$(cv); const width=$canvas.width(); const height=$canvas.height();
+      // Heart/tree animation tuned for mobile
+      const $=window.jQuery; const $canvas=$(cv);
+      const width=$canvas.width(); const height=$canvas.height();
+      const isMobile = width < 700;
+
       const opts={
-        seed:{x:width/2-20,color:'rgb(190,26,37)',scale:2},
+        seed:{ x: Math.floor(width/2) - (isMobile ? 10 : 20), color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
         branch:[[535,680,570,250,500,200,30,100,[
           [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
           [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
@@ -107,27 +113,43 @@
           ]],
           [546,357,608,252,678,221,6,100,[[590,293,646,277,648,271,2,80]]]
         ]]] ,
-        bloom:{num:700,width:width,height:height-30},
-        footer:{width:width,height:5,speed:10}
+        bloom:{ num: isMobile ? 520 : 700, width: width, height: height-20 },
+        footer:{ width: width, height: 4, speed: 10 }
       };
-      const tree=new Tree(cv,width,height,opts);
-      const seed=tree.seed, foot=tree.footer;
 
-      const seedAnimate=eval(Jscex.compile('async', function () {
+      const tree=new Tree($canvas[0], width, height, opts);
+      const seed=tree.seed, foot=tree.footer;
+      let hold = 1; // wait for tap so heart is visible and tappable
+
+      // Show a faint outline at seed to help user notice the heart
+      try{
+        const ctx=cv.getContext('2d'); ctx.strokeStyle='rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(opts.seed.x+20, height-40, 18, 0, Math.PI*2); ctx.stroke();
+      }catch(_){}
+
+      // Tap/click to start heart drop
+      $canvas.on('click touchstart', function(){ hold = 0; });
+
+      const seedAnimate=eval(Jscex.compile('async', function(){
         seed.draw();
-        while (seed.canScale()) { seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
-        while (seed.canMove()) { seed.move(0,2); foot.draw(); $await(Jscex.Async.sleep(10)); }
+        while(hold){ $await(Jscex.Async.sleep(10)); }           // wait for user tap
+        while(seed.canScale()){ seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
+        while(seed.canMove()){  seed.move(0,2); foot.draw(); $await(Jscex.Async.sleep(10)); }
       }));
       const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
       const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
+
+      const snapW = Math.min(610, Math.max(260, width - 240));
+      const moveX = Math.min(500, Math.max(260, width - 500));
       const moveAnimate=eval(Jscex.compile('async', function(){
-        tree.snapshot('p1',240,0,Math.min(610,width-240),height);
-        while(tree.move('p1',Math.min(500,width-500),0)){ foot.draw(); $await(Jscex.Async.sleep(10)); }
+        tree.snapshot('p1', 240, 0, snapW, height);
+        while(tree.move('p1', moveX, 0)){ foot.draw(); $await(Jscex.Async.sleep(10)); }
         foot.draw();
-        tree.snapshot('p2',Math.min(500,width-500),0,Math.min(610,width-240),height);
+        tree.snapshot('p2', moveX, 0, snapW, height);
         $canvas.parent().css('background','url('+tree.toDataURL('image/png')+')');
         $canvas.css('background','#ffe'); $await(Jscex.Async.sleep(300)); $canvas.css('background','none');
       }));
+
       const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
       const runAsync=eval(Jscex.compile('async', function(){ $await(seedAnimate()); $await(growAnimate()); $await(flowAnimate()); $await(moveAnimate()); textAnimate().start(); }));
       runAsync().start();
