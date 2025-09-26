@@ -58,17 +58,17 @@
   <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
 
   <script>
-    // Error surface (helps catch missing files)
+    // Error banner
     (function(){ const b=document.getElementById('err');
       addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
     })();
 
-    // Canvas sizing
+    // Canvas size
     const cv=document.getElementById('canvas');
     function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.68); }
     size(); addEventListener('resize',size); addEventListener('orientationchange',size);
 
-    // Load libs in order
+    // Load libs
     const libs=[
       'file/jquery.min.js','file/jscex.min.js','file/jscex-parser.js','file/jscex-jit.js',
       'file/jscex-builderbase.min.js','file/jscex-async.min.js','file/jscex-async-powerpack.min.js',
@@ -80,10 +80,10 @@
       try{ for(const l of libs){ await loadScript(l); } }
       catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // AGE SO FAR — set DOB (YYYY, MM, DD) — MM is 0-based
+      // AGE SO FAR — set DOB (YYYY, MM, DD)
       const DOB = new Date(2005, 8, 30); // change to actual DOB
-      const yNum=document.getElementById('yNum'), dNum=document.getElementById('dNum'),
-            hNum=document.getElementById('hNum'), mNum=document.getElementById('mNum'), sNum=document.getElementById('sNum');
+      const yEl=document.getElementById('yNum'), dEl=document.getElementById('dNum'),
+            hEl=document.getElementById('hNum'), mEl=document.getElementById('mNum'), sEl=document.getElementById('sNum');
       function updateAge(){
         const now = new Date();
         let years = now.getFullYear() - DOB.getFullYear();
@@ -96,31 +96,32 @@
         const hours = Math.floor(diff/hMs); diff%=hMs;
         const mins = Math.floor(diff/mMs); diff%=mMs;
         const secs = Math.floor(diff/sMs);
-        yNum.textContent=years;
-        dNum.textContent=days;
-        hNum.textContent=String(hours).padStart(2,'0');
-        mNum.textContent=String(mins).padStart(2,'0');
-        sNum.textContent=String(secs).padStart(2,'0');
+        yEl.textContent=years;
+        dEl.textContent=days;
+        hEl.textContent=String(hours).padStart(2,'0');
+        mEl.textContent=String(mins).padStart(2,'0');
+        sEl.textContent=String(secs).padStart(2,'0');
         setTimeout(updateAge, 500);
       }
       updateAge();
 
-      // Build centered, scaled scene so tree sits in the middle on phones
+      // Build centered, scaled scene (strong centering)
       const $=window.jQuery; const $canvas=$(cv);
       const width=$canvas.width(); const height=$canvas.height();
 
-      // Base art target size from original (1100x680). Scale+center vertically.
       const baseW=1100, baseH=680;
-      const fit = Math.min(width/baseW, height/baseH);  // scale down to fit both dimensions
+      const fit = Math.min(width/baseW, height/baseH);
       const ctx = cv.getContext('2d');
-      ctx.setTransform(fit, 0, 0, fit, 0, (height - baseH*fit)/2); // scale and center vertically
+      const offsetX = (width  - baseW*fit)/2;
+      const offsetY = (height - baseH*fit)/2 + height*0.06; // nudge down
+      ctx.setTransform(fit, 0, 0, fit, offsetX, offsetY);
 
-      // Seed centered horizontally after scaling
-      const seedX = (baseW/2 - 20);
-
+      // Seed centered on base coords
+      const seedX = baseW/2 - 20;
       const isMobile = width < 700;
+
       const opts={
-        seed:{ x: seedX, color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
+        seed:{ x: seedX, color:'rgb(190,26,37)', scale: isMobile ? 1.1 : 1.8 },
         branch:[[535,680,570,250,500,200,30,100,[
           [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
           [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
@@ -131,11 +132,10 @@
           ]],
           [546,357,608,252,678,221,6,100,[[590,293,646,277,648,271,2,80]]]
         ]]] ,
-        bloom:{ num: isMobile ? 520 : 700, width: baseW, height: baseH-20 },
+        bloom:{ num: isMobile ? 500 : 680, width: baseW, height: baseH-40 },
         footer:{ width: baseW, height: 4, speed: 10 }
       };
 
-      // Tree draws into transformed context (already scaled+centered)
       const tree=new Tree($canvas[0], baseW, baseH, opts);
       const seed=tree.seed, foot=tree.footer;
 
@@ -143,16 +143,21 @@
       const audio=document.getElementById('myAudio');
       const hint=document.getElementById('hint');
 
+      // Start both animation and audio on first user gesture (listen widely)
       function startAll(){
         if (hold){ hold = 0; }
         audio.loop = true;
-        audio.play().catch(()=>{ /* user can tap again if blocked */ });
+        audio.play().catch(()=>{}); // if blocked, a second tap will succeed
         hint.style.display='none';
         $canvas.off('click touchstart', startAll);
+        document.removeEventListener('click', startAll);
+        document.removeEventListener('touchstart', startAll);
       }
       $canvas.on('click touchstart', startAll);
+      document.addEventListener('click', startAll, {passive:true});
+      document.addEventListener('touchstart', startAll, {passive:true});
 
-      // Draw a subtle guide ring around heart location
+      // Optional ring to indicate heart position
       try{ ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(seedX+20, baseH-40, 18, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }catch(_){}
 
       const seedAnimate=eval(Jscex.compile('async', function(){
@@ -163,7 +168,7 @@
       }));
       const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
       const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
-      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // snapshot disabled → no seam
+      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // disable snapshot to avoid seam
       const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
 
       const runAsync=eval(Jscex.compile('async', function(){
@@ -173,179 +178,4 @@
     })();
   </script>
 </body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Happy Birthday Nannu</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <style>
-    html,body{margin:0;height:100%;background:#081b3e;}
-    #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
-    /* Top = animation area (scaled+centered), Bottom = info area */
-    canvas{display:block;width:100vw;height:68vh;}
-    #info{height:32vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:10px;}
-    #ageBox{display:inline-flex;gap:10px;align-items:center;font:600 16px system-ui,Arial;background:rgba(255,255,255,0.08);padding:8px 14px;border-radius:999px}
-    #ageBox .pill{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:999px}
-    #ageBox .num{font-weight:700;margin-right:6px}
-    #msg{position:absolute;top:10vh;left:50%;transform:translateX(-50%);width:88vw;max-width:600px;color:#fff;z-index:3}
-    #code{display:none;line-height:1.35;font:14px system-ui,Arial;text-align:left}
-    #hint{position:absolute;top:34vh;left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,0.35);padding:8px 12px;border-radius:12px;font:600 14px system-ui,Arial;pointer-events:none}
-    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;font:14px/1.4 system-ui,Arial;padding:8px;display:none;z-index:10}
-    @media (max-width:420px){
-      canvas{height:66vh}
-      #ageBox{font-size:15px}
-      #msg{top:12vh}
-      #hint{top:33vh}
-    }
-  </style>
-  <link rel="stylesheet" href="file/default.css">
-</head>
-<body>
-  <div id="err"></div>
-
-  <div id="stage">
-    <div id="msg"><div id="code">
-      <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
-      <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
-      <span class="say">Aap hamesha khush raho. I miss you.</span><br>
-      <span class="say">May Allah bless you with happiness. 💕</span><br>
-      <span class="say">My world, my universe, my everything.</span><br>
-      <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
-      <span class="say">Happy Birthday once again!</span><br>
-    </div></div>
-
-    <canvas id="canvas"></canvas>
-    <div id="hint">Tap the heart to start</div>
-
-    <div id="info">
-      <div id="ageBox">
-        <span class="pill"><span class="num" id="yNum">0</span>Years</span>
-        <span class="pill"><span class="num" id="dNum">0</span>Days</span>
-        <span class="pill"><span class="num" id="hNum">00</span>Hours</span>
-        <span class="pill"><span class="num" id="mNum">00</span>Minutes</span>
-        <span class="pill"><span class="num" id="sNum">00</span>Seconds</span>
-      </div>
-      <div style="opacity:.8;font:500 13px system-ui,Arial">Music starts when the heart is tapped</div>
-    </div>
-  </div>
-
-  <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
-
-  <script>
-    // Error surface (helps catch missing files)
-    (function(){ const b=document.getElementById('err');
-      addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
-    })();
-
-    // Canvas sizing
-    const cv=document.getElementById('canvas');
-    function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.68); }
-    size(); addEventListener('resize',size); addEventListener('orientationchange',size);
-
-    // Load libs in order
-    const libs=[
-      'file/jquery.min.js','file/jscex.min.js','file/jscex-parser.js','file/jscex-jit.js',
-      'file/jscex-builderbase.min.js','file/jscex-async.min.js','file/jscex-async-powerpack.min.js',
-      'file/functions.js','file/love.js'
-    ];
-    function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('Failed to load '+src)); document.body.appendChild(s); }); }
-
-    (async function main(){
-      try{ for(const l of libs){ await loadScript(l); } }
-      catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
-
-      // AGE SO FAR — set DOB (YYYY, MM, DD) — MM is 0-based
-      const DOB = new Date(2005, 8, 30); // change to actual DOB
-      const yNum=document.getElementById('yNum'), dNum=document.getElementById('dNum'),
-            hNum=document.getElementById('hNum'), mNum=document.getElementById('mNum'), sNum=document.getElementById('sNum');
-      function updateAge(){
-        const now = new Date();
-        let years = now.getFullYear() - DOB.getFullYear();
-        const bdayThisYear = new Date(now.getFullYear(), DOB.getMonth(), DOB.getDate());
-        if (bdayThisYear > now) years--;
-        const lastBD = new Date(DOB.getFullYear()+years, DOB.getMonth(), DOB.getDate());
-        let diff = now - lastBD;
-        const dMs=86400000, hMs=3600000, mMs=60000, sMs=1000;
-        const days = Math.floor(diff/dMs); diff%=dMs;
-        const hours = Math.floor(diff/hMs); diff%=hMs;
-        const mins = Math.floor(diff/mMs); diff%=mMs;
-        const secs = Math.floor(diff/sMs);
-        yNum.textContent=years;
-        dNum.textContent=days;
-        hNum.textContent=String(hours).padStart(2,'0');
-        mNum.textContent=String(mins).padStart(2,'0');
-        sNum.textContent=String(secs).padStart(2,'0');
-        setTimeout(updateAge, 500);
-      }
-      updateAge();
-
-      // Build centered, scaled scene so tree sits in the middle on phones
-      const $=window.jQuery; const $canvas=$(cv);
-      const width=$canvas.width(); const height=$canvas.height();
-
-      // Base art target size from original (1100x680). Scale+center vertically.
-      const baseW=1100, baseH=680;
-      const fit = Math.min(width/baseW, height/baseH);  // scale down to fit both dimensions
-      const ctx = cv.getContext('2d');
-      ctx.setTransform(fit, 0, 0, fit, 0, (height - baseH*fit)/2); // scale and center vertically
-
-      // Seed centered horizontally after scaling
-      const seedX = (baseW/2 - 20);
-
-      const isMobile = width < 700;
-      const opts={
-        seed:{ x: seedX, color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
-        branch:[[535,680,570,250,500,200,30,100,[
-          [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
-          [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
-          [539,281,537,248,534,217,3,40],
-          [546,397,413,247,328,244,9,80,[
-            [427,286,383,253,371,205,2,40],
-            [498,345,435,315,395,330,4,60]
-          ]],
-          [546,357,608,252,678,221,6,100,[[590,293,646,277,648,271,2,80]]]
-        ]]] ,
-        bloom:{ num: isMobile ? 520 : 700, width: baseW, height: baseH-20 },
-        footer:{ width: baseW, height: 4, speed: 10 }
-      };
-
-      // Tree draws into transformed context (already scaled+centered)
-      const tree=new Tree($canvas[0], baseW, baseH, opts);
-      const seed=tree.seed, foot=tree.footer;
-
-      let hold = 1; // wait for heart tap
-      const audio=document.getElementById('myAudio');
-      const hint=document.getElementById('hint');
-
-      function startAll(){
-        if (hold){ hold = 0; }
-        audio.loop = true;
-        audio.play().catch(()=>{ /* user can tap again if blocked */ });
-        hint.style.display='none';
-        $canvas.off('click touchstart', startAll);
-      }
-      $canvas.on('click touchstart', startAll);
-
-      // Draw a subtle guide ring around heart location
-      try{ ctx.save(); ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(seedX+20, baseH-40, 18, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }catch(_){}
-
-      const seedAnimate=eval(Jscex.compile('async', function(){
-        seed.draw();
-        while(hold){ $await(Jscex.Async.sleep(10)); }
-        while(seed.canScale()){ seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
-        while(seed.canMove()){  seed.move(0,2); foot.draw(); $await(Jscex.Async.sleep(10)); }
-      }));
-      const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
-      const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
-      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // snapshot disabled → no seam
-      const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
-
-      const runAsync=eval(Jscex.compile('async', function(){
-        $await(seedAnimate()); $await(growAnimate()); $await(flowAnimate()); $await(moveAnimate()); textAnimate().start();
-      }));
-      runAsync().start();
-    })();
-  </script>
-</body>
-  </html>
+</html>
