@@ -2,185 +2,176 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Happy Birthday</title>
+  <title>Happy Birthday Nannu</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <link rel="stylesheet" href="file/default.css">
   <style>
-    html,body{margin:0;height:100%;background:#081b3e;overflow:hidden}
-    #wrap{position:relative;width:100vw;height:100vh}
-    #clock-box{position:absolute;top:14px;left:16px;color:#fff;z-index:3;font:600 16px system-ui,Arial}
-    #text{position:absolute;top:80px;left:16px;color:#fff;z-index:3;font:14px system-ui,Arial}
-    #code{display:none;line-height:1.35}
-    canvas{display:block;width:100vw;height:100vh}
-    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;padding:8px;font:14px system-ui,Arial;display:none;z-index:9}
+    html,body{margin:0;height:100%;background:#081b3e;}
+    #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
+    /* Top: animation area, Bottom: info area */
+    canvas{display:block;width:100vw;height:68vh;}
+    #info{height:32vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:10px;}
+    #ageBox{display:inline-flex;gap:10px;align-items:center;font:600 16px system-ui,Arial;background:rgba(255,255,255,0.08);padding:8px 14px;border-radius:999px}
+    #ageBox .pill{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:999px}
+    #ageBox .num{font-weight:700;margin-right:6px}
+    #msg{position:absolute;top:10vh;left:50%;transform:translateX(-50%);width:88vw;max-width:600px;color:#fff;z-index:3}
+    #code{display:none;line-height:1.35;font:14px system-ui,Arial}
+    #hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;background:rgba(0,0,0,0.35);padding:8px 12px;border-radius:12px;font:600 14px system-ui,Arial;pointer-events:none}
+    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;font:14px/1.4 system-ui,Arial;padding:8px;display:none;z-index:10}
+    @media (max-width:420px){
+      canvas{height:66vh}
+      #ageBox{font-size:15px}
+      #msg{top:12vh}
+    }
   </style>
+  <link rel="stylesheet" href="file/default.css">
 </head>
 <body>
   <div id="err"></div>
 
-  <div id="wrap">
-    <div id="clock-box"><span id="clock">Loading…</span></div>
-    <div id="text">
-      <div id="code">
-        <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
-        <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
-        <span class="say">Aap hamesha khush raho. I miss you.</span><br>
-        <span class="say">May Allah bless you with happiness. 💕</span><br>
-        <span class="say">My world, my universe, my everything.</span><br>
-        <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
-        <span class="say">Happy Birthday once again!</span><br>
-      </div>
-    </div>
+  <div id="stage">
+    <div id="msg"><div id="code">
+      <span class="say">Nanuu 🥺🥺🥺 Mere Bachee Mere Zuvuu💞</span><br>
+      <span class="say">Happy Birthday Very Very Happy Birthday Jaan🎈</span><br>
+      <span class="say">Aap hamesha khush raho. I miss you.</span><br>
+      <span class="say">May Allah bless you with happiness. 💕</span><br>
+      <span class="say">My world, my universe, my everything.</span><br>
+      <span class="say">Apna khayaal rakha karo, Nannuuu 🥺</span><br>
+      <span class="say">Happy Birthday once again!</span><br>
+    </div></div>
+
     <canvas id="canvas"></canvas>
+
+    <div id="info">
+      <div id="ageBox">
+        <span class="pill"><span class="num" id="yNum">0</span>Years</span>
+        <span class="pill"><span class="num" id="dNum">0</span>Days</span>
+        <span class="pill"><span class="num" id="hNum">0</span>Hours</span>
+        <span class="pill"><span class="num" id="mNum">0</span>Minutes</span>
+        <span class="pill"><span class="num" id="sNum">0</span>Seconds</span>
+      </div>
+      <div style="opacity:.8;font:500 13px system-ui,Arial">Tap the heart to start music and animation</div>
+    </div>
+
+    <div id="hint">Tap the heart</div>
   </div>
 
   <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
 
-  <!-- Original libraries, exact filenames -->
-  <script src="file/jquery.min.js"></script>
-  <script src="file/jscex.min.js"></script>
-  <script src="file/jscex-parser.js"></script>
-  <script src="file/jscex-jit.js"></script>
-  <script src="file/jscex-builderbase.min.js"></script>
-  <script src="file/jscex-async.min.js"></script>
-  <script src="file/jscex-async-powerpack.min.js"></script>
-  <script src="file/functions.js"></script>
-  <script src="file/love.js"></script>
-
   <script>
-    // Show first error if any file fails to load
+    // Show first script error (helps catch missing files)
     (function(){ const b=document.getElementById('err');
       addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
     })();
 
-    // 1) Responsive canvas sizing only (no transforms)
-    const $win = $(window), $canvas = $('#canvas');
-    function fitCanvas(){
-      $canvas.attr('width', window.innerWidth);
-      $canvas.attr('height', window.innerHeight);
-    }
-    fitCanvas(); $win.on('resize orientationchange', fitCanvas);
+    // Canvas sizing
+    const cv=document.getElementById('canvas');
+    function size(){ cv.width=innerWidth; cv.height=Math.round(innerHeight*0.68); }
+    size(); addEventListener('resize',size); addEventListener('orientationchange',size);
 
-    // 2) Original options from the source (unchanged coordinates)
-    const opts = {
-      seed: { x: 550 - 20, color: "rgb(190, 26, 37)", scale: 2 },
-      branch: [
-        [535, 680, 570, 250, 500, 200, 30, 100, [
-          [540, 500, 455, 417, 340, 400, 13, 100, [
-            [450, 435, 434, 430, 394, 395, 2, 40]
-          ]],
-          [550, 445, 600, 356, 680, 345, 12, 100, [
-            [578, 400, 648, 409, 661, 426, 3, 80]
-          ]],
-          [539, 281, 537, 248, 534, 217, 3, 40],
-          [546, 397, 413, 247, 328, 244, 9, 80, [
-            [427, 286, 383, 253, 371, 205, 2, 40],
-            [498, 345, 435, 315, 395, 330, 4, 60]
-          ]],
-          [546, 357, 608, 252, 678, 221, 6, 100, [
-            [590, 293, 646, 277, 648, 271, 2, 80]
-          ]]
-        ]]
-      ],
-      bloom: { num: 700, width: 1080, height: 650 },
-      footer: { width: 1200, height: 5, speed: 10 }
-    };
+    // Load libs in order
+    const libs=[
+      'file/jquery.min.js',
+      'file/jscex.min.js',
+      'file/jscex-parser.js',
+      'file/jscex-jit.js',
+      'file/jscex-builderbase.min.js',
+      'file/jscex-async.min.js',
+      'file/jscex-async-powerpack.min.js',
+      'file/functions.js',
+      'file/love.js'
+    ];
+    function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('Failed to load '+src)); document.body.appendChild(s); }); }
 
-    // 3) Original animation with ONE mobile tweak:
-    //    Play audio in the same tap that releases the heart.
-    (function () {
-      const canvas = $canvas;
-      if (!canvas[0].getContext) return;
+    (async function main(){
+      try{ for(const l of libs){ await loadScript(l); } }
+      catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // sizes set by fitCanvas()
-      const width = canvas.width();
-      const height = canvas.height();
-      canvas.attr("width", width);
-      canvas.attr("height", height);
+      // AGE SO FAR: set DOB (YYYY, MM, DD)
+      const DOB = new Date(2005, 8, 30); // Example: 30 Sep 2005 (month 0-based). Change this.
+      const yNum=document.getElementById('yNum'), dNum=document.getElementById('dNum'),
+            hNum=document.getElementById('hNum'), mNum=document.getElementById('mNum'), sNum=document.getElementById('sNum');
 
-      const tree = new Tree(canvas[0], width, height, opts);
-      const seed = tree.seed;
-      const foot = tree.footer;
-      let hold = 1;
-
-      function startFromTap(){
-        // release heart
-        if (hold){ hold = 0; }
-        // start music (same gesture satisfies mobile autoplay)
-        const audio = document.getElementById('myAudio');
-        audio.loop = true;
-        const p = audio.play(); if (p && p.catch) p.catch(()=>{});
-        // remove listeners after first gesture
-        canvas.off('click touchstart', startFromTap);
+      function updateAge(){
+        const now = new Date();
+        // Years
+        let years = now.getFullYear() - DOB.getFullYear();
+        const beforeBirthday = new Date(now.getFullYear(), DOB.getMonth(), DOB.getDate()) > now;
+        if (beforeBirthday) years--;
+        // Base date of last birthday
+        const lastBD = new Date(DOB.getFullYear()+years, DOB.getMonth(), DOB.getDate());
+        let diff = now - lastBD;
+        const dayMs=86400000, hourMs=3600000, minMs=60000, secMs=1000;
+        const days = Math.floor(diff/dayMs); diff%=dayMs;
+        const hours = Math.floor(diff/hourMs); diff%=hourMs;
+        const mins = Math.floor(diff/minMs); diff%=minMs;
+        const secs = Math.floor(diff/secMs);
+        yNum.textContent=years.toString();
+        dNum.textContent=days.toString();
+        hNum.textContent=hours.toString().padStart(2,'0');
+        mNum.textContent=mins.toString().padStart(2,'0');
+        sNum.textContent=secs.toString().padStart(2,'0');
+        setTimeout(updateAge, 500);
       }
+      updateAge(); // design adapted from common age-calculator breakdowns [web:10][web:14][web:12]
 
-      canvas.on('click touchstart', function(e){
-        const offset = canvas.offset(), x = e.originalEvent.touches ? e.originalEvent.touches[0].pageX - offset.left : e.pageX - offset.left;
-        const y = e.originalEvent.touches ? e.originalEvent.touches[0].pageY - offset.top : e.pageY - offset.top;
-        // keep original hover behavior (optional)
-        startFromTap();
-      });
+      // HEART/TREE animation centered; same tap unlocks audio
+      const $=window.jQuery; const $canvas=$(cv);
+      const width=$canvas.width(); const height=$canvas.height();
+      const isMobile = width < 700;
 
-      const seedAnimate = eval(Jscex.compile("async", function () {
+      const opts={
+        seed:{ x: Math.floor(width/2) - 20, color:'rgb(190,26,37)', scale: isMobile ? 1.15 : 2 },
+        branch:[[535,680,570,250,500,200,30,100,[
+          [540,500,455,417,340,400,13,100,[[450,435,434,430,394,395,2,40]]],
+          [550,445,600,356,680,345,12,100,[[578,400,648,409,661,426,3,80]]],
+          [539,281,537,248,534,217,3,40],
+          [546,397,413,247,328,244,9,80,[
+            [427,286,383,253,371,205,2,40],
+            [498,345,435,315,395,330,4,60]
+          ]],
+          [546,357,608,252,678,221,6,100,[[590,293,646,277,648,271,2,80]]]
+        ]]] ,
+        bloom:{ num: isMobile ? 520 : 700, width: width, height: height-20 },
+        footer:{ width: width, height: 4, speed: 10 }
+      };
+
+      const tree=new Tree($canvas[0], width, height, opts);
+      const seed=tree.seed, foot=tree.footer;
+      let hold = 1; // wait for heart tap
+
+      const audio=document.getElementById('myAudio');
+      const hint=document.getElementById('hint');
+
+      function startAll(){
+        if (hold){ hold = 0; }
+        audio.loop = true;
+        // bind play to this same user gesture; required by mobile autoplay policies [web:13][web:5][web:6]
+        audio.play().catch(()=>{ /* if it fails once, user can tap again */ });
+        hint.style.display='none';
+      }
+      $canvas.on('click touchstart', startAll);
+
+      // Optional: small visual ring at seed to guide tap
+      try{
+        const ctx=cv.getContext('2d'); ctx.strokeStyle='rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(opts.seed.x+20, height-40, 18, 0, Math.PI*2); ctx.stroke();
+      }catch(_){}
+
+      const seedAnimate=eval(Jscex.compile('async', function(){
         seed.draw();
-        while (hold) { $await(Jscex.Async.sleep(10)); }
-        while (seed.canScale()) { seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
-        while (seed.canMove()) { seed.move(0, 2); foot.draw(); $await(Jscex.Async.sleep(10)); }
+        while(hold){ $await(Jscex.Async.sleep(10)); }
+        while(seed.canScale()){ seed.scale(0.95); $await(Jscex.Async.sleep(10)); }
+        while(seed.canMove()){  seed.move(0,2); foot.draw(); $await(Jscex.Async.sleep(10)); }
       }));
+      const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
+      const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
+      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // no snapshot → no seam
+      const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
 
-      const growAnimate = eval(Jscex.compile("async", function () {
-        do { tree.grow(); $await(Jscex.Async.sleep(10)); } while (tree.canGrow());
+      const runAsync=eval(Jscex.compile('async', function(){
+        $await(seedAnimate()); $await(growAnimate()); $await(flowAnimate()); $await(moveAnimate()); textAnimate().start();
       }));
-
-      const flowAnimate = eval(Jscex.compile("async", function () {
-        do { tree.flower(2); $await(Jscex.Async.sleep(10)); } while (tree.canFlower());
-      }));
-
-      const moveAnimate = eval(Jscex.compile("async", function () {
-        tree.snapshot("p1", 240, 0, 610, 680);
-        while (tree.move("p1", 500, 0)) {
-          foot.draw();
-          $await(Jscex.Async.sleep(10));
-        }
-        foot.draw();
-        tree.snapshot("p2", 500, 0, 610, 680);
-
-        canvas.parent().css("background", "url(" + tree.toDataURL('image/png') + ")");
-        canvas.css("background", "#ffe");
-        $await(Jscex.Async.sleep(300));
-        canvas.css("background", "none");
-      }));
-
-      const textAnimate = eval(Jscex.compile("async", function () {
-        $("#code").show().typewriter();
-      }));
-
-      const runAsync = eval(Jscex.compile("async", function () {
-        $await(seedAnimate());
-        $await(growAnimate());
-        $await(flowAnimate());
-        $await(moveAnimate());
-        textAnimate().start();
-      }));
-
       runAsync().start();
-
-      // CLOCK (running time or countdown — here a simple countdown to next birthday)
-      (function clockCounter(){
-        const span=document.getElementById('clock');
-        function nextBirthday(m,d){ const n=new Date(); let y=n.getFullYear(); let t=new Date(y,m-1,d,0,0,0); if(t<n) t=new Date(y+1,m-1,d,0,0,0); return t; }
-        const target=nextBirthday(9,30); // change month/day
-        function tick(){
-          const n=new Date(); let diff=Math.max(0,target-n);
-          const D=Math.floor(diff/86400000); diff%=86400000;
-          const H=Math.floor(diff/3600000); diff%=3600000;
-          const M=Math.floor(diff/60000); diff%=60000;
-          const S=Math.floor(diff/1000);
-          span.textContent = D+" days "+H+" hours "+M+" minutes "+S+" seconds";
-          setTimeout(tick,500);
-        }
-        tick();
-      })();
     })();
   </script>
 </body>
