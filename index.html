@@ -7,16 +7,19 @@
   <style>
     html,body{margin:0;height:100%;background:#081b3e;}
     #stage{position:relative;width:100vw;min-height:100vh;overflow:hidden;}
+    /* Top: animation area, Bottom: info area */
     canvas{display:block;width:100vw;height:68vh;}
-    #clock-strip{height:32vh;display:flex;align-items:center;justify-content:center;color:#fff;
-                 font:600 18px system-ui,Arial;text-align:center;padding:0 12px}
+    #info{height:32vh;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:10px;}
+    #ageBox{display:inline-flex;gap:10px;align-items:center;font:600 16px system-ui,Arial;background:rgba(255,255,255,0.08);padding:8px 14px;border-radius:999px}
+    #ageBox .pill{background:rgba(255,255,255,0.15);padding:6px 10px;border-radius:999px}
+    #ageBox .num{font-weight:700;margin-right:6px}
     #msg{position:absolute;top:10vh;left:50%;transform:translateX(-50%);width:88vw;max-width:600px;color:#fff;z-index:3}
     #code{display:none;line-height:1.35;font:14px system-ui,Arial}
-    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;font:14px system-ui,Arial;
-         padding:8px;display:none;z-index:10}
+    #hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;background:rgba(0,0,0,0.35);padding:8px 12px;border-radius:12px;font:600 14px system-ui,Arial;pointer-events:none}
+    #err{position:fixed;left:0;right:0;top:0;background:#ff3860;color:#fff;font:14px/1.4 system-ui,Arial;padding:8px;display:none;z-index:10}
     @media (max-width:420px){
       canvas{height:66vh}
-      #clock-strip{height:34vh;font-size:16px}
+      #ageBox{font-size:15px}
       #msg{top:12vh}
     }
   </style>
@@ -37,13 +40,25 @@
     </div></div>
 
     <canvas id="canvas"></canvas>
-    <div id="clock-strip"><span id="clock">Loading…</span></div>
+
+    <div id="info">
+      <div id="ageBox">
+        <span class="pill"><span class="num" id="yNum">0</span>Years</span>
+        <span class="pill"><span class="num" id="dNum">0</span>Days</span>
+        <span class="pill"><span class="num" id="hNum">0</span>Hours</span>
+        <span class="pill"><span class="num" id="mNum">0</span>Minutes</span>
+        <span class="pill"><span class="num" id="sNum">0</span>Seconds</span>
+      </div>
+      <div style="opacity:.8;font:500 13px system-ui,Arial">Tap the heart to start music and animation</div>
+    </div>
+
+    <div id="hint">Tap the heart</div>
   </div>
 
   <audio id="myAudio"><source src="aud.mp3" type="audio/mpeg"></audio>
 
   <script>
-    // Error display
+    // Show first script error (helps catch missing files)
     (function(){ const b=document.getElementById('err');
       addEventListener('error',e=>{ b.style.display='block'; b.textContent=e.message||'A script failed to load'; });
     })();
@@ -55,9 +70,15 @@
 
     // Load libs in order
     const libs=[
-      'file/jquery.min.js','file/jscex.min.js','file/jscex-parser.js','file/jscex-jit.js',
-      'file/jscex-builderbase.min.js','file/jscex-async.min.js','file/jscex-async-powerpack.min.js',
-      'file/functions.js','file/love.js'
+      'file/jquery.min.js',
+      'file/jscex.min.js',
+      'file/jscex-parser.js',
+      'file/jscex-jit.js',
+      'file/jscex-builderbase.min.js',
+      'file/jscex-async.min.js',
+      'file/jscex-async-powerpack.min.js',
+      'file/functions.js',
+      'file/love.js'
     ];
     function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('Failed to load '+src)); document.body.appendChild(s); }); }
 
@@ -65,23 +86,35 @@
       try{ for(const l of libs){ await loadScript(l); } }
       catch(err){ const b=document.getElementById('err'); b.style.display='block'; b.textContent=err.message; return; }
 
-      // Countdown below the canvas — set birthday month/day
-      (function clockCounter(){
-        const span=document.getElementById('clock');
-        function nextBirthday(m,d){ const n=new Date(); let y=n.getFullYear(); let t=new Date(y,m-1,d,0,0,0); if(t<n) t=new Date(y+1,m-1,d,0,0,0); return t; }
-        const target=nextBirthday(9,30); // change this
-        function tick(){
-          const n=new Date(); let diff=Math.max(0,target-n);
-          const D=Math.floor(diff/86400000); diff%=86400000;
-          const H=Math.floor(diff/3600000); diff%=3600000;
-          const M=Math.floor(diff/60000); diff%=60000;
-          const S=Math.floor(diff/1000);
-          span.textContent=`${D} days  ${H} hours  ${M} minutes  ${S} seconds`;
-          setTimeout(tick,500);
-        } tick();
-      })();
+      // AGE SO FAR: set DOB (YYYY, MM, DD)
+      const DOB = new Date(2005, 8, 30); // Example: 30 Sep 2005 (month 0-based). Change this.
+      const yNum=document.getElementById('yNum'), dNum=document.getElementById('dNum'),
+            hNum=document.getElementById('hNum'), mNum=document.getElementById('mNum'), sNum=document.getElementById('sNum');
 
-      // Heart/tree: centered, waits for tap; same tap starts music
+      function updateAge(){
+        const now = new Date();
+        // Years
+        let years = now.getFullYear() - DOB.getFullYear();
+        const beforeBirthday = new Date(now.getFullYear(), DOB.getMonth(), DOB.getDate()) > now;
+        if (beforeBirthday) years--;
+        // Base date of last birthday
+        const lastBD = new Date(DOB.getFullYear()+years, DOB.getMonth(), DOB.getDate());
+        let diff = now - lastBD;
+        const dayMs=86400000, hourMs=3600000, minMs=60000, secMs=1000;
+        const days = Math.floor(diff/dayMs); diff%=dayMs;
+        const hours = Math.floor(diff/hourMs); diff%=hourMs;
+        const mins = Math.floor(diff/minMs); diff%=minMs;
+        const secs = Math.floor(diff/secMs);
+        yNum.textContent=years.toString();
+        dNum.textContent=days.toString();
+        hNum.textContent=hours.toString().padStart(2,'0');
+        mNum.textContent=mins.toString().padStart(2,'0');
+        sNum.textContent=secs.toString().padStart(2,'0');
+        setTimeout(updateAge, 500);
+      }
+      updateAge(); // design adapted from common age-calculator breakdowns [web:10][web:14][web:12]
+
+      // HEART/TREE animation centered; same tap unlocks audio
       const $=window.jQuery; const $canvas=$(cv);
       const width=$canvas.width(); const height=$canvas.height();
       const isMobile = width < 700;
@@ -104,18 +137,25 @@
 
       const tree=new Tree($canvas[0], width, height, opts);
       const seed=tree.seed, foot=tree.footer;
-
       let hold = 1; // wait for heart tap
 
-      // Detect taps inside the heart area to start animation + audio
       const audio=document.getElementById('myAudio');
+      const hint=document.getElementById('hint');
+
       function startAll(){
         if (hold){ hold = 0; }
         audio.loop = true;
-        audio.play().catch(()=>{}); // same gesture should unlock
-        $canvas.off('click touchstart', startAll);
+        // bind play to this same user gesture; required by mobile autoplay policies [web:13][web:5][web:6]
+        audio.play().catch(()=>{ /* if it fails once, user can tap again */ });
+        hint.style.display='none';
       }
       $canvas.on('click touchstart', startAll);
+
+      // Optional: small visual ring at seed to guide tap
+      try{
+        const ctx=cv.getContext('2d'); ctx.strokeStyle='rgba(255,255,255,0.25)';
+        ctx.beginPath(); ctx.arc(opts.seed.x+20, height-40, 18, 0, Math.PI*2); ctx.stroke();
+      }catch(_){}
 
       const seedAnimate=eval(Jscex.compile('async', function(){
         seed.draw();
@@ -125,7 +165,7 @@
       }));
       const growAnimate=eval(Jscex.compile('async', function(){ do{ tree.grow(); $await(Jscex.Async.sleep(10)); } while(tree.canGrow()); }));
       const flowAnimate=eval(Jscex.compile('async', function(){ do{ tree.flower(2); $await(Jscex.Async.sleep(10)); } while(tree.canFlower()); }));
-      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // no snapshot, avoids seam
+      const moveAnimate=eval(Jscex.compile('async', function(){ foot.draw(); })); // no snapshot → no seam
       const textAnimate=eval(Jscex.compile('async', function(){ $('#code').show().typewriter(); }));
 
       const runAsync=eval(Jscex.compile('async', function(){
